@@ -76,3 +76,7 @@ A workout application may require several APIs to support its functionalities. H
 -   **Endpoints**:
     -   Send reminders for workouts
     -   Notify users about new features or updates
+
+npm install ts-node --save-dev
+npm install typescript -g
+npm install typescript --save-dev

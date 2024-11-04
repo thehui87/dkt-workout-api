@@ -6,7 +6,7 @@
     "start": "npm run serve",
     "build": "npm run build-ts",
     "serve": "node dist/server.js",
-    "dev": "nodemon",
+    "dev": "nodemon --files",
     "dev-debug": "NODE_OPTIONS='--inspect' next dev",
     "test": "jest --coverage=false --verbose",
     "lint": "eslint src/*.ts",
@@ -49,6 +49,7 @@
     "nodemon": "^3.1.7",
     "prettier": "^3.3.3",
     "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.6.2"
   }
 }
