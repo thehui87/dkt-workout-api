@@ -1,6 +1,8 @@
 // src/index.ts
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import Exercise, { IExercise } from "../models/Exercise";
+import path from "path";
+import fs from "fs";
 
 const defaultValues: Partial<IExercise> = {
     name: "", // Default value for repetitions
@@ -13,28 +15,117 @@ const defaultValues: Partial<IExercise> = {
 export const createNewExercise = async (
     req: Request,
     res: Response,
-): Promise<Response> => {
+    next: NextFunction,
+) => {
     const userId = req.user?.id;
     try {
-        const exerciseData: Partial<IExercise> = {
-            name: req.body.name || defaultValues.name, // Default name if not provided
+        const { name, videoPlaceholder } = req.body; // Get the form data
+        const imageFiles = req.files as Express.Multer.File[]; // Get the uploaded files
+
+        // Make sure name is provided
+        if (!name) {
+            return res.status(400).json({ error: "Name is required" });
+        }
+
+        if (!userId) {
+            return res.status(400).json({ error: "User id is required" });
+        }
+
+        // Step 1: Create exercise record in the database to generate exerciseId
+        const exerciseData = {
+            name, // Default name if not provided
             userId: userId || "Anonymous", // Default createdBy if not provided
             createdOn: new Date(),
             updatedOn: new Date(),
-            imagePlaceholder:
-                req.body.imagePlaceholder || defaultValues.imagePlaceholder, // Ensure this is handled as an array
-            videoPlaceholder:
-                req.body.videoPlaceholder || defaultValues.videoPlaceholder,
+            videoPlaceholder: videoPlaceholder || "",
+            imagePlaceholder: defaultValues.imagePlaceholder,
         };
 
         const newExercise = new Exercise(exerciseData);
-        await newExercise.save();
-        return res.status(201).json(newExercise);
+        const savedExercise = await newExercise.save();
+
+        req.body.exerciseId = savedExercise._id.toString(); // Save exerciseId in req for later use
+        next(); // Move to next middleware (file upload)
     } catch (error: any) {
         return res.status(400).json({ error: error.message });
     }
 };
 
+export const getCreatedExercise = async (
+    req: Request,
+    res: Response,
+): Promise<Response> => {
+    const exerciseId = req.body.exerciseId; // Get the exerciseId saved earlier
+    const userId = req.user?.id; // Get userId from the authenticated user
+    const imageFiles = req.files as Express.Multer.File[]; // Access the uploaded image files
+
+    if (!userId || !exerciseId) {
+        return res.status(400).json({ error: "Missing userId or exerciseId" });
+    }
+
+    try {
+        console.log("00000");
+        console.log("userId", userId);
+        console.log("exerciseId", exerciseId);
+        // Create the directory structure for the user and exercise
+        const userExerciseDir = path.join(
+            __dirname,
+            "../../uploads",
+            userId,
+            "exercise",
+            exerciseId,
+        );
+        console.log("userExerciseDir", userId);
+        // Ensure the directory exists (create it if it doesn't)
+        fs.existsSync(userExerciseDir) ||
+            fs.mkdirSync(userExerciseDir, { recursive: true });
+
+        console.log("111111");
+        // Move the files from the temporary directory to the final destination
+        const imageMetadata = await Promise.all(
+            imageFiles.map(async file => {
+                const tempFilePath = path.join(
+                    __dirname,
+                    "../../uploads",
+                    userId,
+                    "exercise",
+                    "temp",
+                    file.filename,
+                );
+                const finalFilePath = path.join(userExerciseDir, file.filename);
+
+                // Move the file from temp to final destination
+                fs.renameSync(tempFilePath, finalFilePath);
+
+                return {
+                    filename: file.originalname,
+                    path: finalFilePath.replace("uploads/", ""), // Strip "uploads/" from path
+                };
+            }),
+        );
+        console.log("2222222");
+        // Update the exercise with the new image paths
+        const updatedExercise = await Exercise.findByIdAndUpdate(
+            exerciseId,
+            {
+                $set: {
+                    imagePlaceholder: imageMetadata,
+                    updatedOn: new Date(),
+                },
+            },
+            { new: true }, // Return the updated document
+        );
+
+        return res.status(201).json({
+            message: "New exercise created successfully!",
+            exercise: updatedExercise,
+        });
+    } catch (error: any) {
+        return res.status(500).json({
+            error: "Failed to update exercise with image paths",
+        });
+    }
+};
 // Get all workouts
 export const getAllExercises = async (
     req: Request,

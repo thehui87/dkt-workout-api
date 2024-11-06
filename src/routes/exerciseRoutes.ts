@@ -4,19 +4,41 @@ import { authenticate, authorizeRole } from "../middleware/authMiddleware";
 import {
     getAllExercises,
     createNewExercise,
+    getCreatedExercise,
     getExerciseById,
     updateExercise,
     deactivateExercise,
     deleteExercise,
 } from "../controllers/exerciseController";
+import upload from "../middleware/fileStorageMiddleware";
+
 const router = express.Router();
 
 router.get("/", authenticate, (req, res) => {
     getAllExercises(req, res);
 }); // Get all exercises
-router.post("/", authenticate, (req, res) => {
-    createNewExercise(req, res);
-}); //  Create a new exercise
+// router.post(
+//     "/",
+//     authenticate,
+//     (req, res, next) => {
+//         createNewExercise(req, res, next);
+//     },
+//     upload.array("imagePlaceholder", 4),
+//     (req, res) => {
+//         getCreatedExercise(req, res);
+//     },
+// ); //  Create a new exercise
+router.post(
+    "/",
+    authenticate,
+    upload.array("imagePlaceholder", 4),
+    (req, res, next) => {
+        createNewExercise(req, res, next);
+    },
+    (req, res) => {
+        getCreatedExercise(req, res);
+    },
+); //  Create a new exercise
 router.get("/:id", authenticate, (req, res) => {
     getExerciseById(req, res);
 }); //  Get exercise by id

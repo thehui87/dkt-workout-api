@@ -23,11 +23,13 @@ app.use(
 app.options("*", cors());
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 const PORT = process.env.PORT || 3004;
 
 app.use(express.json());
+app.use(express.urlencoded());
 connectDB();
 
 app.use("/api/workouts", workoutRoutes);

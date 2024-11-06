@@ -71,12 +71,21 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
                         sameSite: "none", // CSRF protection
                         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days expiration
                     });
+                    const accessToken = await generateAccessToken(userObj);
+
+                    res.cookie("accessToken", accessToken, {
+                        httpOnly: true, // Prevent JavaScript access
+                        secure: true, // Send cookie only over HTTPS
+                        sameSite: "none", // CSRF protection
+                        maxAge: 15 * 60 * 1000, // 15 mins expiration
+                    });
 
                     // Generate access token (short-lived)
                     // Respond with the access token (which can be stored in memory or Redux)
-                    return res.status(200).json({
-                        accessToken: generateAccessToken(userObj),
-                    });
+                    // return res.status(200).json({
+                    //     accessToken: generateAccessToken(userObj),
+                    // });
+                    return res.status(200).send("Login successful");
                 }
             }
         }
@@ -116,9 +125,19 @@ export const refreshToken = async (
                         role: user.role,
                     });
 
+                    res.cookie("accessToken", newAccessToken, {
+                        httpOnly: true, // Prevent JavaScript access
+                        secure: true, // Send cookie only over HTTPS
+                        sameSite: "none", // CSRF protection
+                        maxAge: 15 * 60 * 1000, // 15 mins expiration
+                    });
+
                     // Send the new access token to the client
                     resolve(
-                        res.status(200).json({ accessToken: newAccessToken }),
+                        // res.status(200).json({ accessToken: newAccessToken }),
+                        res
+                            .status(200)
+                            .json({ message: "Acces token refreshed" }),
                     );
                 },
             );
@@ -187,6 +206,13 @@ export const logout = async (
         httpOnly: true,
         secure: true, // true if using HTTPS
         sameSite: "none", // required for cross-origin requests
+        maxAge: 0,
     });
-    return res.sendStatus(200); // Success
+    res.clearCookie("access_token", {
+        httpOnly: true,
+        secure: true, // true if using HTTPS
+        sameSite: "none", // required for cross-origin requests
+        maxAge: 0,
+    });
+    return res.status(200).json({ message: "Logged out successfully" }); // Success
 };

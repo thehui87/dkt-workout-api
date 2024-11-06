@@ -16,16 +16,17 @@ export const authenticate = (
     res: Response,
     next: NextFunction,
 ): void => {
-    const token = req.header("Authorization")?.replace("Bearer ", "");
-
-    if (!token) res.status(401).send("Access Denied");
-    else {
+    // const token = req.header("Authorization")?.replace("Bearer ", "");
+    const token = req.cookies.accessToken;
+    if (!token) {
+        res.status(401).send("Access Denied");
+        return;
+    } else {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-            // req.user = decoded as { _id: string };
             console.log(decoded);
+
             req.user = decoded as { id: string; role: string };
-            // req?.user = decoded as { _id: string }; // Type assertion for user
             next();
         } catch (error) {
             res.status(400).send("Invalid Token");
